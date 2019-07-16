@@ -15,19 +15,19 @@ RUN choco install -y ruby --version 2.4.2.2 --params "'/InstallDir:C:\'" \
   && refreshenv \
   && ridk install 2 3
 
-# required for fluent-plugin-jq
-RUN choco install -y jq
-
 RUN echo gem: --no-document >> C:\ProgramData\gemrc \
   && gem install -N fluentd -v "1.4.0" \
   && gem install -N fluent-plugin-concat -v "2.2.2" \
   && gem install -N fluent-plugin-prometheus -v "1.3.0" \
-  && gem install -N fluent-plugin-jq -v "0.5.1" \
   && gem install -N oj -v "3.5.1" \
   && gem install -N /tmp/*.gem \
   && gem sources --clear-all
 
-RUN mkdir C:\fluentd\etc
+# plugin hardfails when using net-http-persistent 3.0.0+ on windows
+# https://github.com/drbrain/net-http-persistent/issues/79
+# downgrade net-http-persistent to 2.9.4
+RUN gem uninstall net-http-persistent --ignore-dependencies \
+  && gem install -N net-http-persistent --version 2.9.4
 
 # Remove gem cache
 RUN powershell -Command del C:\ruby24\lib\ruby\gems\2.4.0\cache\*.gem;
