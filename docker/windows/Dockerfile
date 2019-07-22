@@ -23,14 +23,19 @@ RUN echo gem: --no-document >> C:\ProgramData\gemrc \
   && gem install -N /tmp/*.gem \
   && gem sources --clear-all
 
-# plugin hardfails when using net-http-persistent 3.0.0+ on windows
-# https://github.com/drbrain/net-http-persistent/issues/79
-# downgrade net-http-persistent to 2.9.4
-RUN gem uninstall net-http-persistent --ignore-dependencies \
-  && gem install -N net-http-persistent --version 2.9.4
+# plugin hardfails when using net-http-persistent 3.0.1 on windows
+# https://github.com/drbrain/net-http-persistent/issues/79#issuecomment-347541046
+# make an inline replacement to net-http-persistent to resolve
+RUN powershell -Command " \
+$file = 'C:\ruby24\lib\ruby\gems\2.4.0\gems\net-http-persistent-3.0.1\lib\net\http\persistent.rb'; \
+$content = (Get-Content -Path $file).Replace(\"  DEFAULT_POOL_SIZE = Process.getrlimit(Process::RLIMIT_NOFILE).first / 4\", \"  if Gem.win_platform? then`n    DEFAULT_POOL_SIZE = 256`n  else`n    DEFAULT_POOL_SIZE = Process.getrlimit(Process::RLIMIT_NOFILE).first / 4`n  end\"); \
+Set-Content -Path $file $content; \
+"
 
 # Remove gem cache
 RUN powershell -Command del C:\ruby24\lib\ruby\gems\2.4.0\cache\*.gem;
 
-ENTRYPOINT ["cmd", "/k", "fluentd"]
+COPY entrypoint.ps1 /fluentd/entrypoint.ps1
+
+ENTRYPOINT ["powershell.exe", "/fluentd/entrypoint.ps1"]
 CMD ["-h"]
